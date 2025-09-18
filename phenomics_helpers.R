@@ -213,11 +213,11 @@ AdaptiveKernelDenoizing=function(data,use_ica=T,n.comp=NULL, k_neighbors_prop=0.
 }
 
 
-runKnnAnalysis=function(data,k_neighbors_prop=0.035,snn_threshold_prop=0.2,gamma=3,make_symmetric_snn=T,graph_snn=T,mode="undirected",weighted=T,calc_dists=F,find_louvain_clusts=T){
+runKnnAnalysis=function(data,k_neighbors_prop=0.035,snn_threshold_prop=0.2,gamma=3,make_symmetric_snn=T,graph_snn=T,mode="undirected",weighted=T,calc_dists=F,find_louvain_clusts=T,min_neighbors=8,local_scale_quantile=0.9){
   k_neighbors=k_neighbors_prop*nrow(data)
   snn_threshold=snn_threshold_prop*k_neighbors
   mode=match.arg(mode, c("undirected", "directed")) #
-  similObj=adaptiveGaussianSNN(data,k_neighbors,snn_threshold,gamma=gamma,make_symmetric_snn=make_symmetric_snn) 
+  similObj=adaptiveGaussianSNN(data,k_neighbors,snn_threshold,gamma=gamma,make_symmetric_snn=make_symmetric_snn,min_neighbors=min_neighbors,local_scale_quantile=local_scale_quantile) 
   
   if (graph_snn) {
     similObj=c(similObj,getGraphKNN(similObj$similarity_snn,mode=mode,weighted=weighted,calc_dists=calc_dists,findLouClusts=find_louvain_clusts))
