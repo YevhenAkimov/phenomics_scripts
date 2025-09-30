@@ -1077,4 +1077,9 @@ summarize_matrix_rows_by_column_groups = function(mat, groups, func, retain_coln
 
 
 
+col_min_except_zero <- function(df_or_mat) {
+  m <- as.matrix(df_or_mat)               # works for data.frame or matrix
+  res <- apply(m, 2, find_min_except_zero)
+  return(res)                             # named numeric vector
+}
 
