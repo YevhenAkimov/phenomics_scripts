@@ -181,9 +181,14 @@ scan_ic_k <- function(X,
   ))
 }
 
-distance_form_similarity= function(similarity) { (1 / (MinMax(similarity,0.001,0.999)) - 1) }
-distance_form_similarity_log= function(similarity) { (1 / log(MinMax(similarity,0.001,0.999))- 1) }
+distance_from_similarity= function(similarity) { (1 / (MinMax(similarity,0.001,0.999)) - 1) }
+distance_from_similarity_log= function(similarity) { (1 / log(MinMax(similarity,0.001,0.999))- 1) } 
 
+                                              
+distance_form_similarity= function(similarity) { (1 / (MinMax(similarity,0.001,0.999)) - 1) } ## kept for backward compatibility
+distance_form_similarity_log= function(similarity) { (1 / log(MinMax(similarity,0.001,0.999))- 1) } ## for backward compatibility
+
+                                              
 
 AdaptiveKernelDenoizing=function(data,use_ica=T,n.comp=NULL, k_neighbors_prop=0.035, snn_threshold_prop=0.2, gamma=3, make_symmetric_snn=TRUE, min_neighbors=10,center=F,scale=T){
   scaled_inp=scale2(data,center=center,scale=scale)
