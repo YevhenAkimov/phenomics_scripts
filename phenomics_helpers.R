@@ -5,6 +5,70 @@ library(purrr)
 library(tidyr)  
 library(igraph)
 
+get_CCA_smoothed=function(landscape,to.smooth,recompute_cca_for_smoothed=T, k = 300,kt=40,gamma=1,add_graphs=T,umap=T,resolution=1,umap_type="original",subtract_local_connectivity=F,n_neighbors=round(k/2)){
+  
+  landscape=as.matrix(landscape)
+  to.smooth=as.matrix(to.smooth)
+  
+  ccsmooth_ph_obj1=smooth_on_cca(landscape,to.smooth,k=k,kt=kt,gamma=gamma,subtract_local_connectivity=subtract_local_connectivity)
+  
+  print(ccsmooth_ph_obj1$ccares$cor)
+  
+  if (recompute_cca_for_smoothed) {
+    ccsmooth_ph_obj=smooth_on_cca(landscape,ccsmooth_ph_obj1$target_data_sm,k=k,kt=kt,gamma=gamma,subtract_local_connectivity=subtract_local_connectivity)
+  } else {
+    ccsmooth_ph_obj=ccsmooth_ph_obj1
+  }
+  
+  ccsmooth_ph_obj$cor_orig=ccsmooth_ph_obj1$cor
+  ccsmooth_ph_obj$raw_data  = to.smooth
+  ccsmooth_ph_obj$smoothed  = ccsmooth_ph_obj1$target_data_sm
+  ccsmooth_ph_obj$target_data_sm=NULL
+  
+  if (add_graphs){
+    ccsmooth_ph_obj$graphs=list()
+    ccsmooth_ph_obj$graphs[["smoothed"]]=getGraphs(ccsmooth_ph_obj$smoothed,umap=umap,resolution=resolution,k=k,kt=kt,gamma=gamma,subtract_local_connectivity=subtract_local_connectivity,umap_type =umap_type,n_neighbors )
+    ccsmooth_ph_obj$graphs[["landscape.new"]] = getGraphs(ccsmooth_ph_obj$ccares$variates$X,umap=umap,k=k,kt=kt,resolution=resolution,gamma=gamma,subtract_local_connectivity=subtract_local_connectivity,umap_type =umap_type,n_neighbors )
+    ccsmooth_ph_obj$graphs[["to.smooth.new"]] = getGraphs(ccsmooth_ph_obj$ccares$variates$Y,umap=umap,k=k,kt=kt,resolution=resolution,gamma=gamma,subtract_local_connectivity=subtract_local_connectivity,umap_type =umap_type,n_neighbors )
+    
+  }
+  return(ccsmooth_ph_obj)
+}
+
+
+
+smooth_on_cca=function(landscape_data,target_data,sel_dims=NULL, k = 300,kt=40,gamma=1,resolution=1,subtract_local_connectivity=F){
+  if (is.null(sel_dims)) {
+    sel_dims = min(ncol(landscape_data),ncol(target_data))
+  }
+  ccares=mixOmics::rcc(landscape_data,target_data,method = "shrinkage",ncomp = ncol(target_data))
+  ccares$simObjX=adaptiveGaussianSNN(as.matrix(ccares$variates$X[,1:sel_dims]), k = k,kt=kt,gamma=gamma,subtract_local_connectivity =subtract_local_connectivity )
+  ccares$graphsX=getGraphKNN(ccares$simObjX$similaritySNN,
+                             calc_dists=F,resolution=resolution)
+  
+  target_data_sm=smooth_by_similarity(as.matrix(target_data), ccares$simObjX$similaritySNN,type="direct")
+  
+  return(list(ccares=ccares,target_data_sm=target_data_sm))
+}
+
+
+
+getGraphs=function(input,k=300,kt=round(k*0.15),gamma=1,calc_dist=F,umap=F,umap_type="original",subtract_local_connectivity=F,n_neighbors=round(k/2),resolution=1,...) {
+  sim=adaptiveGaussianSNN(input, k = k, kt=kt, gamma=gamma, subtract_local_connectivity=subtract_local_connectivity )
+  graph=getGraphKNN(sim$similaritySNN,calc_dists=calc_dist,resolution=resolution)
+  if (umap) {
+    if (umap_type=="original") {
+      umap=uwot::umap(input,n_neighbors=n_neighbors,...)
+    } else {
+      dist_from_sim=distance_from_sim(sim$similaritySNN,type=umap_type)
+      umap=uwot::umap(as.dist(dist_from_sim),n_neighbors=n_neighbors,...)
+    }
+    return(list(sim=sim,graph=graph,umap=umap))
+  } else {
+    return(list(sim=sim,graph=graph))
+  }
+  
+}
 #' Scan ICA dimensionalities with ICtest::FOBIasymp and plot p-values
 #'
 #' For each k (number of non-Gaussian components under H0), this function
