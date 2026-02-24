@@ -20,6 +20,11 @@ smooth_by_similarity= function(input, similarity,smoothing_repats=1,type="direct
     }
     
   }
+  
+  return(sm)
+  
+  
+}
 get_CCA_smoothed=function(landscape,to.smooth,recompute_cca_for_smoothed=T, k = 300,kt=40,gamma=1,add_graphs=T,umap=T,resolution=1,umap_type="original",subtract_local_connectivity=F,n_neighbors=round(k/2)){
   
   landscape=as.matrix(landscape)
