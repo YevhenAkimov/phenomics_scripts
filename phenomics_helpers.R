@@ -4,7 +4,22 @@ library(dplyr)
 library(purrr)    
 library(tidyr)  
 library(igraph)
-
+smooth_by_similarity= function(input, similarity,smoothing_repats=1,type="direct") {
+  similarity=(similarity)/rowSums(similarity)
+  sm=input
+  for ( i in 1:smoothing_repats){
+    if(type=="direct"){
+      sm=  similarity %*% (sm)
+    } else if (type=="reverse"){
+      sm=  t(similarity) %*% (sm)
+    } else  if (type=="both"){
+      sm=  similarity %*% (sm)
+      sm=  t(similarity) %*% (sm)
+    } else {
+      stop("type should be either 'direct' or 'reverse' or 'both'")
+    }
+    
+  }
 get_CCA_smoothed=function(landscape,to.smooth,recompute_cca_for_smoothed=T, k = 300,kt=40,gamma=1,add_graphs=T,umap=T,resolution=1,umap_type="original",subtract_local_connectivity=F,n_neighbors=round(k/2)){
   
   landscape=as.matrix(landscape)
