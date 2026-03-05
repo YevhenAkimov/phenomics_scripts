@@ -5,6 +5,23 @@ library(purrr)
 library(tidyr)  
 library(igraph)
 
+sel_genes_from_coeffs_each_pheno_RIDGE = function(fit_coeffs) {
+  
+  fit_coeffs = scale2(fit_coeffs,center=F)
+  each_top = list()
+  
+  for (i in 1:ncol( fit_coeffs )) {
+    
+    inp=abs(fit_coeffs[,i])
+    fit_coeffs_clusts=mclust::Mclust(inp,G=2)
+    
+    summ=summarize_by_cl(as.data.frame(inp),fit_coeffs_clusts$classification,order_rows = F,add_inds = F)
+    each_top[[i]]=names(fit_coeffs_clusts$classification)[fit_coeffs_clusts$classification %in% rownames(summ)[which.max(summ[,1])]]
+    
+  }
+  all_genes=unique(unlist(each_top))
+  return(list(each_top=each_top,all_genes=all_genes))
+}
 get_glm=function(inp_data, pheno ,scale.pheno=T,alpha=0.5,lambda_type="lambda.min"){  #lambda.min lambda.1se
  require(glmnet)
   if (scale.pheno) {
