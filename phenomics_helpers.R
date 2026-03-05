@@ -4,6 +4,33 @@ library(dplyr)
 library(purrr)    
 library(tidyr)  
 library(igraph)
+
+get_glm=function(inp_data, pheno ,scale.pheno=T,alpha=0.5,lambda_type="lambda.min"){  #lambda.min lambda.1se
+ require(glmnet)
+  if (scale.pheno) {
+    pheno=scale(pheno)
+  }
+  predicted_y=list()
+  coeffs=list()
+  p=list()
+  inp_data=(inp_data)
+  for (ph in colnames(pheno)) {
+    cv_fit <- cv.glmnet(inp_data, pheno[,ph], alpha =alpha)
+    best_lambda <- cv_fit[[lambda_type]]
+    plot(cv_fit)
+    lasso_fit <- glmnet(inp_data, pheno[,ph], alpha = alpha, lambda = best_lambda)
+    coeffs[[ph]]=coef(lasso_fit)
+    predicted_y[[ph]] <- predict(lasso_fit, newx = inp_data)
+   #p[[ph]]=plot_density_scatter(data=cbind.data.frame(predicted_y[[ph]],pheno[,ph]),n=300,colorscheme_ = Spectral)
+  }
+  res_lasso=list( coeffs=coeffs,  predicted_y=predicted_y , p=p , inp_data=inp_data )
+  res_lasso$coeffs=as.data.frame(res_lasso$coeffs)
+  colnames(res_lasso$coeffs)=colnames(pheno) 
+  return(res_lasso)
+  
+}
+
+
 smooth_by_similarity= function(input, similarity,smoothing_repats=1,type="direct") {
   similarity=(similarity)/rowSums(similarity)
   sm=input
