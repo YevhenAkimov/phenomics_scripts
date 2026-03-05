@@ -4,23 +4,24 @@ library(dplyr)
 library(purrr)    
 library(tidyr)  
 library(igraph)
+sel_genes_knee <- function(fit_coeffs) {
+  b <- fit_coeffs[setdiff(rownames(fit_coeffs), "(Intercept)"), , drop = FALSE]
 
-sel_genes_from_coeffs_each_pheno_RIDGE = function(fit_coeffs) {
-  
-  fit_coeffs = scale2(fit_coeffs,center=F)
-  each_top = list()
-  
-  for (i in 1:ncol( fit_coeffs )) {
-    
-    inp=abs(fit_coeffs[,i])
-    fit_coeffs_clusts=mclust::Mclust(inp,G=2)
-    
-    summ=summarize_by_cl(as.data.frame(inp),fit_coeffs_clusts$classification,order_rows = F,add_inds = F)
-    each_top[[i]]=names(fit_coeffs_clusts$classification)[fit_coeffs_clusts$classification %in% rownames(summ)[which.max(summ[,1])]]
-    
-  }
-  all_genes=unique(unlist(each_top))
-  return(list(each_top=each_top,all_genes=all_genes))
+  each_top <- lapply(seq_len(ncol(b)), function(i) {
+    v <- sort(abs(b[, i]), decreasing = TRUE)
+    n <- length(v)
+    if (n < 3 || max(v) == min(v)) return(names(v)[v > 0])
+
+    x <- (seq_len(n) - 1) / (n - 1)                      # 0..1
+    y <- (v - min(v)) / (max(v) - min(v) + 1e-12)        # 0..1
+    d <- y - (1 - x)                                     # distance above diagonal
+    k <- which.max(d)                                    # knee index
+
+    names(v)[seq_len(k)]
+  })
+
+  names(each_top) <- colnames(b)
+  list(each_top = each_top, all_genes = unique(unlist(each_top)))
 }
 get_glm=function(inp_data, pheno ,scale.pheno=T,alpha=0.5,lambda_type="lambda.min"){  #lambda.min lambda.1se
  require(glmnet)
