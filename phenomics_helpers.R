@@ -675,8 +675,6 @@ adaptiveGaussianSNN <- function(data,
   diag(similarity_snn) <- 1
   diag(adjacency_snn)  <- TRUE
   
-  message("similarity_snn is symmetric: ", isSymmetric(similarity_snn))
-  message("similarity_full is symmetric: ", isSymmetric(similarity_full))
   
   return(list(
     raw_data         = raw_data,
