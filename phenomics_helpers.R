@@ -312,7 +312,7 @@ scan_ic_k <- function(X,
 
 distance_from_similarity= function(similarity) { (1 / (MinMax(similarity,0.001,0.999)) - 1) }
 distance_from_similarity_log= function(similarity) { (1 / log(MinMax(similarity,0.001,0.999))- 1) } 
-
+distance_from_similarity_log2=function(similarity) {  -log(MinMax(similarity, 0.001, 0.999))}
                                               
 distance_form_similarity= function(similarity) { (1 / (MinMax(similarity,0.001,0.999)) - 1) } ## kept for backward compatibility
 distance_form_similarity_log= function(similarity) { (1 / log(MinMax(similarity,0.001,0.999))- 1) } ## for backward compatibility
