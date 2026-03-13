@@ -92,32 +92,29 @@ smooth_laplacian_regularization_fast <- function(W, X, lambda = 0.5, alpha = NUL
   prep <- prepare_smoother(W, lambda = lambda, alpha = alpha)
   apply_smoother(prep, X)
 }
-
-LaplacianAdaptiveDenoizing <- function(data, use_ica = T, lambda = 1, n.comp = NULL, k_neighbors_prop = 0.01, snn_threshold_prop = 0.1, gamma = 1, make_symmetric_snn = TRUE, min_neighbors = 6, center = F, scale = T) {
+LaplacianAdaptiveDenoizing <- function(data, use_ica = TRUE, lambda = 1, n.comp = NULL, k_neighbors_prop = 0.01, snn_threshold_prop = 0.1, gamma = 1, make_symmetric_snn = TRUE, min_neighbors = 6, center = FALSE, scale = TRUE) {
   scaled_inp <- scale2(data, center = center, scale = scale)
 
-  if (is.null(n.comp)) {
-    ks <- scan_ic_k(scaled_inp)
-    ks$plot
-    n.comp <- ks$k_hat
-  }
   if (use_ica) {
+    if (is.null(n.comp)) {
+      ks <- scan_ic_k(scaled_inp)
+      n.comp <- max(1L, min(ks$k_hat, ncol(scaled_inp), nrow(scaled_inp)))
+    }
     inp_data <- fastICA::fastICA(scaled_inp, n.comp = n.comp)$S
   } else {
     inp_data <- scaled_inp
   }
 
-  sim <- adaptiveGaussianSNN(inp_data,
+  sim <- adaptiveGaussianSNN(
+    inp_data,
     k_neighbors_prop = k_neighbors_prop,
     snn_threshold_prop = snn_threshold_prop,
     gamma = gamma,
-    make_symmetric_snn = TRUE,
+    make_symmetric_snn = make_symmetric_snn,
     min_neighbors = min_neighbors
   )
-  smoothed <- smooth_laplacian_regularization_fast(sim$similarity_snn, scaled_inp, lambda = lambda)
 
-
-  return(smoothed)
+  smooth_laplacian_regularization_fast(sim$similarity_snn, scaled_inp, lambda = lambda)
 }
 
 
