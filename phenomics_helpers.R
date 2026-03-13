@@ -4,6 +4,123 @@ library(dplyr)
 library(purrr)    
 library(tidyr)  
 library(igraph)
+
+prepare_smoother <- function(W, lambda = 0.5, alpha = NULL) {
+  if (!inherits(W, "sparseMatrix")) {
+    W <- Matrix::Matrix(W, sparse = TRUE)
+  }
+  if (!isSymmetric(W)) {
+    stop("prepare_smoother() requires symmetric W.")
+  }
+  if (nrow(W) != ncol(W)) {
+    stop("W must be square.")
+  }
+  if (!is.numeric(lambda) || length(lambda) != 1L || is.na(lambda) || lambda < 0) {
+    stop("lambda must be a single non-negative number.")
+  }
+
+  n <- nrow(W)
+  d <- Matrix::rowSums(W)
+
+  if (is.null(alpha)) {
+    alpha <- rep(1, n)
+  }
+  if (!is.numeric(alpha) || length(alpha) != n || anyNA(alpha) || any(alpha < 0)) {
+    stop("alpha must be a numeric non-negative vector of length nrow(W).")
+  }
+
+  # System:
+  # (diag((alpha + lambda) * d) - lambda * W) f = diag(alpha * d) x
+  M <- Matrix::Diagonal(x = (alpha + lambda) * d) - lambda * W
+
+  # Solve only on rows/cols that are not structurally zero
+  # (all-zero rows arise for isolated nodes with d = 0)
+  active <- (d > 0) | (alpha > 0)
+
+  factor <- NULL
+  if (any(active)) {
+    M2 <- M[active, active, drop = FALSE]
+    factor <- Matrix::Cholesky(M2, LDL = FALSE, perm = TRUE)
+  }
+
+  list(
+    n = n,
+    d = d,
+    alpha = alpha,
+    lambda = lambda,
+    active = active,
+    factor = factor
+  )
+}
+
+apply_smoother <- function(prep, X) {
+  if (!is.matrix(X)) {
+    X <- as.matrix(X)
+  }
+  if (nrow(X) != prep$n) {
+    stop("Dimension mismatch: nrow(X) must match prepared W.")
+  }
+
+  p <- ncol(X)
+  F <- matrix(0, nrow = prep$n, ncol = p)
+  colnames(F) <- colnames(X)
+  rownames(F) <- rownames(X)
+
+  # Isolated/inactive nodes:
+  # keep consistency with the original convention when alpha > 0,
+  # otherwise 0 if fully masked and disconnected.
+  inactive <- !prep$active
+  if (any(inactive)) {
+    denom <- prep$alpha[inactive] + prep$lambda
+    F[inactive, ] <- 0
+    keep <- denom > 0
+    if (any(keep)) {
+      idx <- which(inactive)[keep]
+      F[idx, ] <- X[idx, , drop = FALSE] / denom[keep]
+    }
+  }
+
+  if (any(prep$active)) {
+    rhs <- (prep$alpha[prep$active] * prep$d[prep$active]) * X[prep$active, , drop = FALSE]
+    F[prep$active, ] <- as.matrix(Matrix::solve(prep$factor, rhs))
+  }
+
+  F
+}
+
+smooth_laplacian_regularization_fast <- function(W, X, lambda = 0.5, alpha = NULL) {
+  prep <- prepare_smoother(W, lambda = lambda, alpha = alpha)
+  apply_smoother(prep, X)
+}
+
+LaplacianAdaptiveDenoizing <- function(data, use_ica = T, lambda = 1, n.comp = NULL, k_neighbors_prop = 0.01, snn_threshold_prop = 0.1, gamma = 1, make_symmetric_snn = TRUE, min_neighbors = 6, center = F, scale = T) {
+  scaled_inp <- scale2(data, center = center, scale = scale)
+
+  if (is.null(n.comp)) {
+    ks <- scan_ic_k(scaled_inp)
+    ks$plot
+    n.comp <- ks$k_hat
+  }
+  if (use_ica) {
+    inp_data <- fastICA::fastICA(scaled_inp, n.comp = n.comp)$S
+  } else {
+    inp_data <- scaled_inp
+  }
+
+  sim <- adaptiveGaussianSNN(inp_data,
+    k_neighbors_prop = k_neighbors_prop,
+    snn_threshold_prop = snn_threshold_prop,
+    gamma = gamma,
+    make_symmetric_snn = TRUE,
+    min_neighbors = min_neighbors
+  )
+  smoothed <- smooth_laplacian_regularization_fast(sim$similarity_snn, scaled_inp, lambda = lambda)
+
+
+  return(smoothed)
+}
+
+
 sel_genes_knee <- function(fit_coeffs) {
   b <- fit_coeffs[setdiff(rownames(fit_coeffs), "(Intercept)"), , drop = FALSE]
 
