@@ -99,6 +99,7 @@ LaplacianAdaptiveDenoizing <- function(data, use_ica = TRUE, lambda = 1, n.comp 
     if (is.null(n.comp)) {
       ks <- scan_ic_k(scaled_inp)
       n.comp <- max(1L, min(ks$k_hat, ncol(scaled_inp), nrow(scaled_inp)))
+      cat("n.comp used: ", n.comp )
     }
     inp_data <- fastICA::fastICA(scaled_inp, n.comp = n.comp)$S
   } else {
